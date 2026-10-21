@@ -25,22 +25,11 @@ pub fn file_stem(name: &str) -> String {
 }
 
 /// Civil date-time (proleptic Gregorian) of a unix timestamp shifted by `offset_secs`.
+/// Out-of-range input (an overflowing shift or a value chrono cannot represent) reads as the epoch.
 pub fn civil(unix: i64, offset_secs: i32) -> (i64, u32, u32, u32, u32, u32) {
-    let t = unix + offset_secs as i64;
-    let days = t.div_euclid(86_400);
-    let secs = t.rem_euclid(86_400);
-    // Howard Hinnant's days_from_civil inverse.
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
-    let y = if m <= 2 { y + 1 } else { y };
-    (y, m, d, (secs / 3600) as u32, (secs % 3600 / 60) as u32, (secs % 60) as u32)
+    use chrono::{Datelike, Timelike};
+    let t = unix.checked_add(offset_secs as i64).and_then(|s| chrono::DateTime::from_timestamp(s, 0)).unwrap_or_default();
+    (i64::from(t.year()), t.month(), t.day(), t.hour(), t.minute(), t.second())
 }
 
 /// `YYYY-MM-DD_HH-MM-SS` (the auto-save file-name stamp).

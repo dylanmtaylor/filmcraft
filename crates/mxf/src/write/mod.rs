@@ -258,25 +258,15 @@ pub struct Timestamp {
 impl Timestamp {
     /// From seconds since the Unix epoch (proleptic Gregorian, UTC).
     pub fn from_unix(secs: i64) -> Timestamp {
-        let days = secs.div_euclid(86_400);
-        let rem = secs.rem_euclid(86_400);
-        // civil-from-days (H. Hinnant)
-        let z = days + 719_468;
-        let era = z.div_euclid(146_097);
-        let doe = z - era * 146_097;
-        let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-        let mp = (5 * doy + 2) / 153;
-        let d = doy - (153 * mp + 2) / 5 + 1;
-        let m = if mp < 10 { mp + 3 } else { mp - 9 };
-        let y = yoe + era * 400 + if m <= 2 { 1 } else { 0 };
+        use chrono::{Datelike, Timelike};
+        let t = chrono::DateTime::from_timestamp(secs, 0).unwrap_or_default();
         Timestamp {
-            year: y.clamp(0, 65535) as u16,
-            month: m as u8,
-            day: d as u8,
-            hour: (rem / 3600) as u8,
-            minute: (rem / 60 % 60) as u8,
-            second: (rem % 60) as u8,
+            year: t.year().clamp(0, 65535) as u16,
+            month: t.month() as u8,
+            day: t.day() as u8,
+            hour: t.hour() as u8,
+            minute: t.minute() as u8,
+            second: t.second() as u8,
             millisecond: 0,
         }
     }

@@ -1907,6 +1907,7 @@ dependencies = [
 name = "filmcraft-engine"
 version = "0.10.0"
 dependencies = [
+ "chrono",
  "craft-docpath",
  "filmcraft-audio-dsp",
  "filmcraft-captions",
@@ -1982,6 +1983,7 @@ dependencies = [
 name = "filmcraft-format"
 version = "0.10.0"
 dependencies = [
+ "chrono",
  "filmcraft-media",
  "filmcraft-project",
  "filmcraft-time",
@@ -2157,6 +2159,7 @@ dependencies = [
 name = "filmcraft-mxf"
 version = "0.10.0"
 dependencies = [
+ "chrono",
  "filmcraft-testkit",
 ]
 
@@ -2275,6 +2278,7 @@ dependencies = [
 name = "filmcraft-testkit"
 version = "0.10.0"
 dependencies = [
+ "chrono",
  "png",
 ]
 
