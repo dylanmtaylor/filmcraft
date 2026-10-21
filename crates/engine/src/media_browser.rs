@@ -638,8 +638,10 @@ fn format_size(b: u64) -> String {
 
 /// `YYYY-MM-DD HH:MM` (UTC) from Unix seconds. Out of range reads as the epoch.
 pub fn format_date(secs: u64) -> String {
+    use chrono::Datelike;
     let t = i64::try_from(secs).ok().and_then(|s| chrono::DateTime::from_timestamp(s, 0)).unwrap_or_default();
-    t.format("%Y-%m-%d %H:%M").to_string()
+    // `{:04}` rather than `%Y`, which writes a `+` before years past 9999.
+    format!("{:04}-{}", t.year(), t.format("%m-%d %H:%M"))
 }
 
 fn probe_cmd(s: &mut Session, p: &Value) -> Result<Value> {
@@ -773,5 +775,9 @@ mod tests {
         assert_eq!(format_date(951_782_400), "2000-02-29 00:00");
         assert_eq!(format_date(1_709_164_800), "2024-02-29 00:00");
         assert_eq!(format_date(1_790_775_907), "2026-09-30 13:45");
+        // Years past 9999 keep the plain zero-padded year (no `+`).
+        assert_eq!(format_date(253_402_300_800), "10000-01-01 00:00");
+        // A value past chrono's range reads as the epoch instead of panicking.
+        assert_eq!(format_date(u64::MAX), "1970-01-01 00:00");
     }
 }

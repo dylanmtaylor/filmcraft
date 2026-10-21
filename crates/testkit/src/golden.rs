@@ -195,8 +195,11 @@ pub fn diff_image(a: &Rgba8, b: &Rgba8) -> Rgba8 {
 
 /// Today's date (UTC) as YYYY-MM-DD, for attribution sidecars.
 fn today() -> String {
-    let t = std::time::SystemTime::now().max(std::time::UNIX_EPOCH);
-    chrono::DateTime::<chrono::Utc>::from(t).format("%Y-%m-%d").to_string()
+    use chrono::Datelike;
+    let since = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+    let t = i64::try_from(since.as_secs()).ok().and_then(|s| chrono::DateTime::from_timestamp(s, 0)).unwrap_or_default();
+    // `{:04}` rather than `%Y`, which writes a `+` before years past 9999.
+    format!("{:04}-{}", t.year(), t.format("%m-%d"))
 }
 
 /// The attribution sidecar text for a generated golden image.
