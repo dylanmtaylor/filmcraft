@@ -11,14 +11,38 @@ pub struct Image {
 }
 
 impl Image {
+    pub const MAX_PIXELS: usize = 268_435_456;
+
     pub fn new(w: usize, h: usize) -> Self {
-        Self { w, h, px: vec![0.0; w * h * 4] }
+        let len = w.checked_mul(h).filter(|&px| px <= Self::MAX_PIXELS).and_then(|px| px.checked_mul(4)).unwrap_or(0);
+        let (w, h, px) = if len == 0 && (w > 0 || h > 0) {
+            (0, 0, Vec::new())
+        } else {
+            let mut px = Vec::new();
+            if px.try_reserve_exact(len).is_ok() {
+                px.resize(len, 0.0);
+                (w, h, px)
+            } else {
+                (0, 0, Vec::new())
+            }
+        };
+        Self { w, h, px }
     }
     pub fn filled(w: usize, h: usize, c: [f32; 4]) -> Self {
-        let mut px = Vec::with_capacity(w * h * 4);
-        for _ in 0..w * h {
-            px.extend_from_slice(&c);
-        }
+        let len = w.checked_mul(h).filter(|&px| px <= Self::MAX_PIXELS).and_then(|px| px.checked_mul(4)).unwrap_or(0);
+        let (w, h, px) = if len == 0 && (w > 0 || h > 0) {
+            (0, 0, Vec::new())
+        } else {
+            let mut px = Vec::new();
+            if px.try_reserve_exact(len).is_ok() {
+                for _ in 0..w * h {
+                    px.extend_from_slice(&c);
+                }
+                (w, h, px)
+            } else {
+                (0, 0, Vec::new())
+            }
+        };
         Self { w, h, px }
     }
     #[inline]
