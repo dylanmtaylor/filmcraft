@@ -330,7 +330,7 @@ impl MxfSource {
         if let Some(&a0) = atracks.first() {
             let si0 = file.tracks[a0].sound.clone().unwrap_or_default();
             let rate = si0.sample_rate;
-            let mut channels = 0;
+            let mut channels: u32 = 0;
             for &ai in &atracks {
                 let t = &file.tracks[ai];
                 let Some(si) = t.sound.as_ref() else { continue };
