@@ -138,7 +138,9 @@ fn decode(s: &Session, need: &AudioNeed, sample_rate: u32) -> Result<Vec<Vec<f32
         .ok_or_else(|| EngineError::Other(format!("media {} is offline", need.path.as_deref().unwrap_or("?"))))?;
     let start = need.start.to_units_floor(sample_rate as i64);
     let frames = (need.end.to_units_floor(sample_rate as i64) - start).max(0) as usize;
-    let mut out: Vec<Vec<f32>> = vec![Vec::with_capacity(frames); need.channels.max(1) as usize];
+    let ch = (need.channels.max(1) as usize).min(filmcraft_media::MAX_AUDIO_CHANNELS as usize);
+    filmcraft_media::validate_audio_buffer_shape(ch, frames).map_err(|e| EngineError::Other(e.to_string()))?;
+    let mut out: Vec<Vec<f32>> = vec![Vec::with_capacity(frames); ch];
     let chunk = sample_rate as usize * 10;
     let mut done = 0usize;
     while done < frames {
