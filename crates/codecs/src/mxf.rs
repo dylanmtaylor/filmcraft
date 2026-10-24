@@ -342,7 +342,12 @@ impl MxfSource {
                 let stored = t.stored_sample_frames().saturating_sub(first);
                 let presented = t.duration.map_or(stored, |du| ((du as i128 * n as i128 / d.max(1) as i128) as u64).min(stored));
                 aframes = aframes.min(presented);
-                channels += si.channels.max(1);
+                let next =
+                    channels.checked_add(si.channels.max(1)).ok_or_else(|| CodecError::Unsupported("MXF: combined audio channel count overflows".into()))?;
+                if next > filmcraft_media::MAX_AUDIO_CHANNELS {
+                    return Err(CodecError::Unsupported(format!("MXF: combined audio exceeds {} channels", filmcraft_media::MAX_AUDIO_CHANNELS)));
+                }
+                channels = next;
                 combined.push((ai, first));
             }
             let sr = if rate.is_valid() { (rate.num as f64 / rate.den as f64).round() as u32 } else { 48_000 };

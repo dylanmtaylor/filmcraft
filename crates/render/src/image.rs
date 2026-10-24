@@ -107,6 +107,9 @@ impl Image {
     /// Resample `self` into a `w`×`h` image through `m` (maps source pixels → destination pixels).
     /// Uses bilinear filtering, with a box pre-filter (mip level) when minifying by more than 2×.
     pub fn transformed(&self, w: usize, h: usize, m: &Affine) -> Image {
+        if self.w == 0 || self.h == 0 || w == 0 || h == 0 {
+            return Image::new(w, h);
+        }
         let Some(inv) = m.inverse() else { return Image::new(w, h) };
         // minification factor
         let sx = (m.a * m.a + m.b * m.b).sqrt();
@@ -143,6 +146,9 @@ impl Image {
 
     /// Half-size box downsample.
     pub fn downsample2(&self) -> Image {
+        if self.w == 0 || self.h == 0 {
+            return Image::new(0, 0);
+        }
         let (w, h) = ((self.w / 2).max(1), (self.h / 2).max(1));
         let mut out = Image::new(w, h);
         out.px.par_chunks_mut(w * 4).enumerate().for_each(|(y, row)| {
@@ -185,6 +191,9 @@ impl Image {
 
     /// Apply a per-pixel function on straight-alpha colour (alpha preserved).
     pub fn map_rgb(&mut self, f: impl Fn([f32; 3], usize, usize) -> [f32; 3] + Sync) {
+        if self.w == 0 || self.h == 0 {
+            return;
+        }
         let w = self.w;
         self.px.par_chunks_mut(w * 4).enumerate().for_each(|(y, row)| {
             for x in 0..w {
@@ -203,6 +212,9 @@ impl Image {
 
     /// Convert to straight sRGB RGBA8.
     pub fn to_rgba8(&self) -> Vec<u8> {
+        if self.w == 0 || self.h == 0 {
+            return Vec::new();
+        }
         let mut out = vec![0u8; self.w * self.h * 4];
         out.par_chunks_mut(self.w * 4).zip(self.px.par_chunks(self.w * 4)).for_each(|(o, s)| filmcraft_frame::linear_premul_to_srgb8(s, o));
         out
@@ -210,6 +222,9 @@ impl Image {
 
     /// Opaque version over black (for monitors).
     pub fn over_black_rgba8(&self) -> Vec<u8> {
+        if self.w == 0 || self.h == 0 {
+            return Vec::new();
+        }
         let mut out = vec![0u8; self.w * self.h * 4];
         out.par_chunks_mut(self.w * 4).zip(self.px.par_chunks(self.w * 4)).for_each(|(o, s)| {
             for (o, s) in o.as_chunks_mut::<4>().0.iter_mut().zip(s.as_chunks::<4>().0) {
