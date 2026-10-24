@@ -85,7 +85,12 @@ impl Default for RenderOptions {
 
 /// Output size for a sequence at a scale.
 pub fn output_size(seq: &Sequence, scale: f32) -> (usize, usize) {
-    (((seq.settings.width as f32 * scale).round() as usize).max(1), ((seq.settings.height as f32 * scale).round() as usize).max(1))
+    let (w, h) = if filmcraft_project::validate_frame_size(seq.settings.width, seq.settings.height).is_ok() {
+        (seq.settings.width, seq.settings.height)
+    } else {
+        (1920, 1080)
+    };
+    (((w as f32 * scale).round() as usize).max(1), ((h as f32 * scale).round() as usize).max(1))
 }
 
 /// Render sequence `seq_id` at timeline time `t`.
