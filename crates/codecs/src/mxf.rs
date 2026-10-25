@@ -351,8 +351,9 @@ impl MxfSource {
                 combined.push((ai, first));
             }
             let sr = if rate.is_valid() { (rate.num as f64 / rate.den as f64).round() as u32 } else { 48_000 };
-            let (sr, channels) = filmcraft_media::bounded_audio_dimensions(sr, channels);
-            audio = Some(AudioStreamInfo { sample_rate: sr, channels, codec: file.tracks[a0].codec.name().into(), bits_per_sample: Some(si0.bits) });
+            if let Ok((sr, channels)) = filmcraft_media::bounded_audio_dimensions(sr, channels) {
+                audio = Some(AudioStreamInfo { sample_rate: sr, channels, codec: file.tracks[a0].codec.name().into(), bits_per_sample: Some(si0.bits) });
+            }
         }
         if aframes == u64::MAX {
             aframes = 0;

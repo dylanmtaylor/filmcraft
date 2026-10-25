@@ -338,7 +338,7 @@ impl AviSource {
         for &s in &astreams {
             let Some(st) = file.streams.get(s) else { continue };
             let mut w = st.audio.clone().unwrap_or_default();
-            let (sample_rate, channels) = filmcraft_media::bounded_audio_dimensions(w.sample_rate, u32::from(w.channels));
+            let Ok((sample_rate, channels)) = filmcraft_media::bounded_audio_dimensions(w.sample_rate, u32::from(w.channels)) else { continue };
             w.sample_rate = sample_rate;
             w.channels = u16::try_from(channels).unwrap_or(u16::MAX);
             let (codec, label) = audio_codec(&w);

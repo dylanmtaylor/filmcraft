@@ -410,7 +410,7 @@ impl MkvSource {
         let audio_streams: Vec<AudioStreamInfo> = atracks
             .iter()
             .filter_map(|&i| file.tracks.get(i))
-            .map(|t| {
+            .filter_map(|t| {
                 let a = t.audio.clone().unwrap_or_default();
                 let mut rate = a.output_sampling_frequency.unwrap_or(a.sampling_frequency).round().max(1.0) as u32;
                 let mut channels = (a.channels as u32).max(1);
@@ -418,8 +418,8 @@ impl MkvSource {
                     rate = crate::audio::OPUS_RATE;
                     channels = h.channels as u32;
                 }
-                (rate, channels) = filmcraft_media::bounded_audio_dimensions(rate, channels);
-                AudioStreamInfo { sample_rate: rate, channels, codec: codec_label(&t.codec), bits_per_sample: a.bit_depth.map(|b| b as u32) }
+                let (rate, channels) = filmcraft_media::bounded_audio_dimensions(rate, channels).ok()?;
+                Some(AudioStreamInfo { sample_rate: rate, channels, codec: codec_label(&t.codec), bits_per_sample: a.bit_depth.map(|b| b as u32) })
             })
             .collect();
         let info = MediaInfo {

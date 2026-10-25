@@ -62,8 +62,18 @@ pub const MAX_AUDIO_BUFFER_BYTES: usize = 512 * 1024 * 1024;
 
 /// Bound container-advertised audio stream dimensions before they are trusted by the app or
 /// allocator.
-pub fn bounded_audio_dimensions(sample_rate: u32, channels: u32) -> (u32, u32) {
-    (sample_rate.clamp(1, MAX_AUDIO_SAMPLE_RATE), channels.clamp(1, MAX_AUDIO_CHANNELS))
+///
+/// Out-of-range values are rejected rather than clamped: publishing a lower sample rate without
+/// resampling the samples would make the stream play at the wrong speed, and a clamped channel
+/// count would misdescribe the interleaving.
+pub fn bounded_audio_dimensions(sample_rate: u32, channels: u32) -> Result<(u32, u32)> {
+    if sample_rate == 0 || sample_rate > MAX_AUDIO_SAMPLE_RATE {
+        return Err(MediaError::Decode(format!("unsupported audio sample rate {sample_rate}")));
+    }
+    if channels == 0 || channels > MAX_AUDIO_CHANNELS {
+        return Err(MediaError::Decode(format!("unsupported audio channel count {channels}")));
+    }
+    Ok((sample_rate, channels))
 }
 
 /// Check an adapter-owned planar `f32` audio allocation before constructing it.
@@ -303,8 +313,10 @@ mod importable_tests {
 
     #[test]
     fn hostile_audio_dimensions_are_bounded_before_adapters_allocate() {
-        assert_eq!(bounded_audio_dimensions(0, 0), (1, 1));
-        assert_eq!(bounded_audio_dimensions(u32::MAX, u32::MAX), (MAX_AUDIO_SAMPLE_RATE, MAX_AUDIO_CHANNELS));
+        assert!(bounded_audio_dimensions(0, 0).is_err());
+        assert!(bounded_audio_dimensions(u32::MAX, u32::MAX).is_err());
+        assert!(bounded_audio_dimensions(MAX_AUDIO_SAMPLE_RATE + 1, 2).is_err());
+        assert_eq!(bounded_audio_dimensions(48_000, 2).ok(), Some((48_000, 2)));
         assert!(validate_audio_buffer_shape(MAX_AUDIO_CHANNELS as usize, MAX_AUDIO_BUFFER_BYTES / 4 / MAX_AUDIO_CHANNELS as usize).is_ok());
         assert!(validate_audio_buffer_shape(MAX_AUDIO_CHANNELS as usize, MAX_AUDIO_BUFFER_BYTES / 4 / MAX_AUDIO_CHANNELS as usize + 1).is_err());
         assert!(resample_source_frames(usize::MAX, MAX_AUDIO_SAMPLE_RATE, 1).is_err());

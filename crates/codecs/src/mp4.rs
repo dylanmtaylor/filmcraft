@@ -593,7 +593,7 @@ fn audio_stream_info(t: &filmcraft_isobmff::Track, bytes: &crate::Src) -> Option
         }
         c => codec_label(c),
     };
-    let (rate, ch) = filmcraft_media::bounded_audio_dimensions(rate, ch);
+    let (rate, ch) = filmcraft_media::bounded_audio_dimensions(rate, ch).ok()?;
     Some(AudioStreamInfo { sample_rate: rate, channels: ch, codec, bits_per_sample: bits })
 }
 
