@@ -78,6 +78,11 @@ fn tell(text: &str, error: bool) {
 }
 
 fn main() -> eframe::Result {
+    // Windows: the update helper is a copy of this program started with `--finish-update`.
+    #[cfg(windows)]
+    if let Some(result) = craft_update::self_update::finish(&craft_update::suite::FILMCRAFT, &std::env::args_os().skip(1).collect::<Vec<_>>()) {
+        std::process::exit(i32::from(result.is_err()));
+    }
     // First, so the panic hook and every start-up record are logged (`logging`).
     let logger = logging::install();
     // lossy, so a value that is not Unicode is reported like any other bad port instead of ignored
@@ -249,6 +254,7 @@ fn app_creator(launch: Launch, graphics: graphics::GraphicsStart, created: Arc<A
             }
         }
         let mut app = FilmcraftApp::new(session);
+        app.set_startup_update_check(true);
         app.graphics_notice = notice;
         if recover == Some(false) {
             app.dialog = None;

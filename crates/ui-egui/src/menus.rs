@@ -146,6 +146,7 @@ pub const UI_COMMANDS: &[UiCommand] = &[
     uic!("help.reportIssue", "Report an Issue…", ["Help"], None),
     uic!("help.revealLogFiles", "Reveal Log Files…", ["Help"], None),
     uic!("help.systemCompatibilityReport", "System Compatibility Report…", ["Help"], None),
+    uic!("app.checkForUpdates", "Check for Updates…", ["Help"], None),
     uic!("app.about", "About FilmCraft", ["Help"], None),
     uic!("app.keyboardShortcuts", "Keyboard Shortcuts…", ["Edit"], Some("Cmd+Alt+K")),
     uic!("app.settings.general", "General…", ["Edit", "Preferences"], Some("Cmd+,")),
@@ -443,6 +444,10 @@ pub fn invoke(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut params:
         "mode.export" => {
             app.ui.mode = Mode::Export;
             return Ok(Value::Null);
+        }
+        "app.checkForUpdates" => {
+            let _ = crate::updates_ui::check(app);
+            return Ok(serde_json::Value::Null);
         }
         "app.about" => {
             app.dialog = Some(crate::Dialog::About);
