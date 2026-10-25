@@ -15,6 +15,9 @@ pub(crate) struct Runtime {
     startup_check: bool,
     #[cfg(not(target_arch = "wasm32"))]
     check_requested: bool,
+    /// The context of the last frame, to wake the UI when a check is queued from a menu callback.
+    #[cfg(not(target_arch = "wasm32"))]
+    repaint: Option<egui::Context>,
     pub(crate) manual_window_open: bool,
     pub(crate) status_message: Option<String>,
 }
@@ -28,6 +31,8 @@ impl Default for Runtime {
             startup_check: false,
             #[cfg(not(target_arch = "wasm32"))]
             check_requested: false,
+            #[cfg(not(target_arch = "wasm32"))]
+            repaint: None,
             manual_window_open: false,
             status_message: None,
         }
@@ -46,6 +51,9 @@ pub(crate) fn check(app: &mut FilmcraftApp) -> Result<Value, String> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         app.updates_rt.check_requested = true;
+        if let Some(ctx) = &app.updates_rt.repaint {
+            ctx.request_repaint();
+        }
         Ok(Value::Null)
     }
     #[cfg(target_arch = "wasm32")]
@@ -60,6 +68,7 @@ pub(crate) fn tick(app: &mut FilmcraftApp, ctx: &egui::Context) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let rt = &mut app.updates_rt;
+        rt.repaint = Some(ctx.clone());
         if std::mem::take(&mut rt.check_requested) {
             rt.updater.check_now(ctx);
         } else if rt.startup_check {
@@ -77,7 +86,7 @@ pub(crate) fn show(app: &mut FilmcraftApp, ctx: &egui::Context) {
         // The restart helper is scheduled before the app closes, so no update starts over unsaved work.
         let clean = !app.session.is_dirty();
         match app.updates_rt.updater.show_if(ctx, clean) {
-            Action::OpenUrl(url) => ctx.open_url(egui::OpenUrl::new_tab(url)),
+            Action::OpenUrl(url) => crate::links::open(app, ctx, &url),
             Action::Close => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
             Action::None => {}
         }
