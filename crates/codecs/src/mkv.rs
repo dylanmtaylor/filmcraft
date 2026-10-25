@@ -142,6 +142,20 @@ fn codec_delay_ticks(t: &filmcraft_matroska::Track) -> i64 {
     i64::try_from((t.codec_delay_ns as i128 + scale_ns / 2) / scale_ns).unwrap_or(i64::MAX)
 }
 
+/// The stream description of an audio track, `None` when its advertised sample rate or channel
+/// count is out of range (see [`filmcraft_media::bounded_audio_dimensions`]).
+fn audio_info(t: &filmcraft_matroska::Track) -> Option<AudioStreamInfo> {
+    let a = t.audio.clone().unwrap_or_default();
+    let mut rate = a.output_sampling_frequency.unwrap_or(a.sampling_frequency).round().max(1.0) as u32;
+    let mut channels = (a.channels as u32).max(1);
+    if let Some(h) = opus_head(&t.codec) {
+        rate = crate::audio::OPUS_RATE;
+        channels = h.channels as u32;
+    }
+    let (rate, channels) = filmcraft_media::bounded_audio_dimensions(rate, channels).ok()?;
+    Some(AudioStreamInfo { sample_rate: rate, channels, codec: codec_label(&t.codec), bits_per_sample: a.bit_depth.map(|b| b as u32) })
+}
+
 /// The track timestamp that media time zero stands for (#715): the earliest start among the
 /// playable tracks. Block timestamps count from the start of the Segment, and a remux that keeps
 /// its source's timestamps (`ffmpeg -copyts`, a cut from a recording) starts its first picture
@@ -339,7 +353,9 @@ impl MkvSource {
             .tracks
             .iter()
             .enumerate()
-            .filter(|(_, t)| t.kind == TrackKind::Audio && !t.samples.is_empty())
+            // A track whose advertised dimensions are refused is no stream at all, so `atracks[k]` and
+            // `info.audio_streams[k]` stay the same track.
+            .filter(|(_, t)| t.kind == TrackKind::Audio && !t.samples.is_empty() && audio_info(t).is_some())
             .map(|(i, _)| i)
             .take(filmcraft_media::MAX_AUDIO_STREAMS)
             .collect();
@@ -407,21 +423,7 @@ impl MkvSource {
                 hdr: v.color.as_ref().and_then(hdr_metadata),
             }
         });
-        let audio_streams: Vec<AudioStreamInfo> = atracks
-            .iter()
-            .filter_map(|&i| file.tracks.get(i))
-            .filter_map(|t| {
-                let a = t.audio.clone().unwrap_or_default();
-                let mut rate = a.output_sampling_frequency.unwrap_or(a.sampling_frequency).round().max(1.0) as u32;
-                let mut channels = (a.channels as u32).max(1);
-                if let Some(h) = opus_head(&t.codec) {
-                    rate = crate::audio::OPUS_RATE;
-                    channels = h.channels as u32;
-                }
-                let (rate, channels) = filmcraft_media::bounded_audio_dimensions(rate, channels).ok()?;
-                Some(AudioStreamInfo { sample_rate: rate, channels, codec: codec_label(&t.codec), bits_per_sample: a.bit_depth.map(|b| b as u32) })
-            })
-            .collect();
+        let audio_streams: Vec<AudioStreamInfo> = atracks.iter().filter_map(|&i| file.tracks.get(i)).filter_map(audio_info).collect();
         let info = MediaInfo {
             name: name.to_string(),
             kind: if video.is_some() { MediaKind::Movie } else { MediaKind::AudioOnly },

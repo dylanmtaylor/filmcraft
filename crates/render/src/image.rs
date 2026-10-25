@@ -120,6 +120,9 @@ impl Image {
             let m2 = m.then_apply(&Affine::scale(2.0, 2.0));
             return half.transformed(w, h, &m2);
         }
+        if w == 0 || h == 0 {
+            return Image::new(0, 0);
+        }
         let mut out = Image::new(w, h);
         // Destination bounds of the source rect, to skip empty rows/cols.
         let b = m.bounds(&filmcraft_geom::Rect::new(0.0, 0.0, self.w as f64, self.h as f64));
@@ -241,6 +244,9 @@ impl Image {
     /// the same (the sRGB of the premultiplied linear color), so the picture still shows over
     /// black, and the alpha says where it is transparent.
     pub fn over_black_with_alpha_rgba8(&self) -> Vec<u8> {
+        if self.w == 0 || self.h == 0 {
+            return Vec::new();
+        }
         let mut out = vec![0u8; self.w * self.h * 4];
         out.par_chunks_mut(self.w * 4).zip(self.px.par_chunks(self.w * 4)).for_each(|(o, s)| {
             for (o, s) in o.as_chunks_mut::<4>().0.iter_mut().zip(s.as_chunks::<4>().0) {
